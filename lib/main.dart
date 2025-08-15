@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'injection/injection.dart';
+import 'core/theme/app_theme.dart';
+import 'core/services/user_context_service.dart';
+import 'features/auth/presentation/bloc/auth_bloc.dart';
+import 'features/auth/presentation/widgets/auth_wrapper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -12,8 +17,11 @@ void main() async {
   // Initialize dependency injection
   await initializeDependencies();
 
+  // Initialize user context service
+  await sl<UserContextService>().initialize();
+
   // Verify dependencies are initialized (for debugging)
-  print('Dependencies initialized: ${areDependenciesInitialized()}');
+  // print('Dependencies initialized: ${areDependenciesInitialized()}');
 
   runApp(const MyApp());
 }
@@ -25,11 +33,14 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Real-Time Chat',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        useMaterial3: true,
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      home: BlocProvider(
+        create: (context) => sl<AuthBloc>(),
+        child: const AuthWrapper(
+          authenticatedChild: MyHomePage(title: 'Real-Time Chat'),
+        ),
       ),
-      home: const MyHomePage(title: 'Real-Time Chat'),
     );
   }
 }

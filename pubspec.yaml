@@ -2,7 +2,7 @@ name: flutter_real_time_chat
 description: "A modern real-time chat application built with Flutter and Firebase Firestore, showcasing BLoC state management with clean architecture. The app allows users to sign in, create or join chat rooms, and exchange messages instantly. It features message delivery and read status indicators for a complete messaging experience. Designed as a GitHub demo project to demonstrate scalable architecture, dependency injection, and real-time data handling using Firebase or WebSocket."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
-publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+publish_to: "none" # Remove this line if you wish to publish to pub.dev
 
 # The following defines the version and build number for your application.
 # A version number is three numbers separated by dots, like 1.2.43
@@ -34,23 +34,29 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
-  
+
   # Firebase dependencies
   firebase_core: ^3.6.0
   cloud_firestore: ^5.4.4
   firebase_auth: ^5.3.1
-  
+
   # State management
   flutter_bloc: ^8.1.6
-  
+
   # Dependency injection
   get_it: ^8.0.2
-  
+
   # Functional programming
   dartz: ^0.10.1
-  
+
   # Value equality
   equatable: ^2.0.5
+
+  # Internationalization
+  intl: ^0.19.0
+
+  # Visibility detection
+  visibility_detector: ^0.4.0+2
 
 dev_dependencies:
   flutter_test:
@@ -62,7 +68,7 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^4.0.0
-  
+
   # Testing dependencies
   mockito: ^5.4.4
   build_runner: ^2.4.13
@@ -74,7 +80,6 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
-
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.

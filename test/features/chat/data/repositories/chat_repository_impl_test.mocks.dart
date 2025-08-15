@@ -5,7 +5,11 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'dart:async' as _i6;
 
+import 'package:flutter_real_time_chat/core/services/user_context_service.dart'
+    as _i7;
 import 'package:flutter_real_time_chat/core/utils/logger.dart' as _i4;
+import 'package:flutter_real_time_chat/features/auth/domain/entities/user.dart'
+    as _i8;
 import 'package:flutter_real_time_chat/features/chat/data/datasources/chat_remote_data_source.dart'
     as _i5;
 import 'package:flutter_real_time_chat/features/chat/data/models/chat_room_model.dart'
@@ -301,4 +305,39 @@ class MockLogger extends _i1.Mock implements _i4.Logger {
           ),
         ),
       ) as _i4.Logger);
+}
+
+/// A class which mocks [UserContextService].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockUserContextService extends _i1.Mock
+    implements _i7.UserContextService {
+  MockUserContextService() {
+    _i1.throwOnMissingStub(this);
+  }
+
+  @override
+  bool get isAuthenticated => (super.noSuchMethod(
+        Invocation.getter(#isAuthenticated),
+        returnValue: false,
+      ) as bool);
+
+  @override
+  _i6.Future<void> initialize() => (super.noSuchMethod(
+        Invocation.method(
+          #initialize,
+          [],
+        ),
+        returnValue: _i6.Future<void>.value(),
+        returnValueForMissingStub: _i6.Future<void>.value(),
+      ) as _i6.Future<void>);
+
+  @override
+  void updateCurrentUser(_i8.User? user) => super.noSuchMethod(
+        Invocation.method(
+          #updateCurrentUser,
+          [user],
+        ),
+        returnValueForMissingStub: null,
+      );
 }

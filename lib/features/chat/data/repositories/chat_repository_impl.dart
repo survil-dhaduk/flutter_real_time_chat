@@ -5,6 +5,7 @@ import 'package:dartz/dartz.dart';
 
 import '../../../../core/errors/failures.dart';
 import '../../../../core/utils/logger.dart';
+import '../../../../core/services/user_context_service.dart';
 import '../../domain/entities/chat_room.dart';
 import '../../domain/entities/message.dart';
 import '../../domain/repositories/chat_repository.dart';
@@ -16,6 +17,7 @@ import '../models/message_model.dart';
 /// with proper error mapping, real-time data handling, and offline support
 class ChatRepositoryImpl implements ChatRepository {
   final ChatRemoteDataSource _remoteDataSource;
+  final UserContextService _userContextService;
   final Logger _logger;
 
   // Cache for offline support
@@ -26,8 +28,10 @@ class ChatRepositoryImpl implements ChatRepository {
 
   ChatRepositoryImpl({
     required ChatRemoteDataSource remoteDataSource,
+    required UserContextService userContextService,
     Logger? logger,
   })  : _remoteDataSource = remoteDataSource,
+        _userContextService = userContextService,
         _logger = logger ?? const Logger();
 
   @override
@@ -115,12 +119,16 @@ class ChatRepositoryImpl implements ChatRepository {
         return Left(validationResult);
       }
 
-      // Get current user ID (this should be provided by the use case layer)
-      // For now, we'll assume it's handled by the data source
+      // Get current user ID
+      final currentUserId = _userContextService.currentUserId;
+      if (currentUserId == null) {
+        return const Left(AuthFailure.notAuthenticated());
+      }
+
       final chatRoom = await _remoteDataSource.createChatRoom(
         name: name,
         description: description,
-        createdBy: '', // This should be provided by the calling layer
+        createdBy: currentUserId,
       );
 
       // Update cached chat rooms
@@ -161,10 +169,15 @@ class ChatRepositoryImpl implements ChatRepository {
         return const Left(ValidationFailure.emptyField('Room ID'));
       }
 
-      // Get current user ID (this should be provided by the use case layer)
+      // Get current user ID
+      final currentUserId = _userContextService.currentUserId;
+      if (currentUserId == null) {
+        return const Left(AuthFailure.notAuthenticated());
+      }
+
       await _remoteDataSource.joinChatRoom(
         roomId: roomId,
-        userId: '', // This should be provided by the calling layer
+        userId: currentUserId,
       );
 
       // Get updated room information
@@ -208,9 +221,15 @@ class ChatRepositoryImpl implements ChatRepository {
         return const Left(ValidationFailure.emptyField('Room ID'));
       }
 
+      // Get current user ID
+      final currentUserId = _userContextService.currentUserId;
+      if (currentUserId == null) {
+        return const Left(AuthFailure.notAuthenticated());
+      }
+
       await _remoteDataSource.leaveChatRoom(
         roomId: roomId,
-        userId: '', // This should be provided by the calling layer
+        userId: currentUserId,
       );
 
       // Remove from cached chat rooms if present
@@ -352,9 +371,15 @@ class ChatRepositoryImpl implements ChatRepository {
         return Left(validationResult);
       }
 
+      // Get current user ID
+      final currentUserId = _userContextService.currentUserId;
+      if (currentUserId == null) {
+        return const Left(AuthFailure.notAuthenticated());
+      }
+
       final message = await _remoteDataSource.sendMessage(
         roomId: roomId,
-        senderId: '', // This should be provided by the calling layer
+        senderId: currentUserId,
         content: content,
         messageType: _messageTypeToString(type),
       );
@@ -400,9 +425,15 @@ class ChatRepositoryImpl implements ChatRepository {
         return const Left(ValidationFailure.emptyField('Room ID'));
       }
 
+      // Get current user ID
+      final currentUserId = _userContextService.currentUserId;
+      if (currentUserId == null) {
+        return const Left(AuthFailure.notAuthenticated());
+      }
+
       await _remoteDataSource.markMessageAsRead(
         messageId: messageId,
-        userId: '', // This should be provided by the calling layer
+        userId: currentUserId,
       );
 
       // Update cached message status
@@ -411,7 +442,7 @@ class ChatRepositoryImpl implements ChatRepository {
             _cachedMessages[roomId]!.indexWhere((msg) => msg.id == messageId);
         if (messageIndex != -1) {
           final updatedMessage = _cachedMessages[roomId]![messageIndex]
-              .markAsReadBy('', DateTime.now());
+              .markAsReadBy(currentUserId, DateTime.now());
           _cachedMessages[roomId]![messageIndex] = updatedMessage;
         }
       }
@@ -461,11 +492,17 @@ class ChatRepositoryImpl implements ChatRepository {
 
       final messages = messagesResult.getOrElse(() => <Message>[]);
 
+      // Get current user ID
+      final currentUserId = _userContextService.currentUserId;
+      if (currentUserId == null) {
+        return const Left(AuthFailure.notAuthenticated());
+      }
+
       // Mark each message as read
       for (final message in messages) {
         await _remoteDataSource.markMessageAsRead(
           messageId: message.id,
-          userId: '', // This should be provided by the calling layer
+          userId: currentUserId,
         );
       }
 

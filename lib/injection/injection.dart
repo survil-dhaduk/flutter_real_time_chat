@@ -4,6 +4,7 @@ import 'package:get_it/get_it.dart';
 
 // Core
 import '../core/utils/logger.dart';
+import '../core/services/user_context_service.dart';
 
 // Auth Feature
 import '../features/auth/data/datasources/auth_remote_data_source.dart';
@@ -26,6 +27,7 @@ import '../features/chat/domain/usecases/get_messages.dart';
 import '../features/chat/domain/usecases/join_chat_room.dart';
 import '../features/chat/domain/usecases/mark_message_as_read.dart';
 import '../features/chat/domain/usecases/send_message.dart';
+import '../features/chat/presentation/bloc/chat_bloc.dart';
 
 /// Global service locator instance
 final GetIt sl = GetIt.instance;
@@ -90,10 +92,16 @@ Future<void> initializeDependencies() async {
     ),
   );
 
+  // User Context Service - registered as singleton to maintain user state
+  sl.registerLazySingleton<UserContextService>(
+    () => UserContextService(authRepository: sl<AuthRepository>()),
+  );
+
   // Chat Repository
   sl.registerLazySingleton<ChatRepository>(
     () => ChatRepositoryImpl(
       remoteDataSource: sl<ChatRemoteDataSource>(),
+      userContextService: sl<UserContextService>(),
     ),
   );
 
@@ -129,15 +137,15 @@ Future<void> initializeDependencies() async {
         authRepository: sl<AuthRepository>(),
       ));
 
-  // Note: ChatBloc will be registered here when implemented in future tasks
-  // sl.registerFactory(() => ChatBloc(
-  //   getChatRooms: sl<GetChatRoomsUseCase>(),
-  //   createChatRoom: sl<CreateChatRoomUseCase>(),
-  //   joinChatRoom: sl<JoinChatRoomUseCase>(),
-  //   sendMessage: sl<SendMessageUseCase>(),
-  //   getMessages: sl<GetMessagesUseCase>(),
-  //   markMessageAsRead: sl<MarkMessageAsReadUseCase>(),
-  // ));
+  // Chat BLoC - registered as factory to ensure fresh instances
+  sl.registerFactory(() => ChatBloc(
+        getChatRoomsUseCase: sl<GetChatRoomsUseCase>(),
+        createChatRoomUseCase: sl<CreateChatRoomUseCase>(),
+        joinChatRoomUseCase: sl<JoinChatRoomUseCase>(),
+        sendMessageUseCase: sl<SendMessageUseCase>(),
+        getMessagesUseCase: sl<GetMessagesUseCase>(),
+        markMessageAsReadUseCase: sl<MarkMessageAsReadUseCase>(),
+      ));
 }
 
 /// Resets all registered dependencies

@@ -91,6 +91,7 @@ class ChatRoom extends Equatable {
     List<String>? participants,
     String? lastMessageId,
     DateTime? lastMessageTime,
+    bool clearLastMessageTime = false,
   }) {
     return ChatRoom(
       id: id ?? this.id,
@@ -100,7 +101,9 @@ class ChatRoom extends Equatable {
       createdAt: createdAt ?? this.createdAt,
       participants: participants ?? this.participants,
       lastMessageId: lastMessageId ?? this.lastMessageId,
-      lastMessageTime: lastMessageTime ?? this.lastMessageTime,
+      lastMessageTime: clearLastMessageTime
+          ? null
+          : (lastMessageTime ?? this.lastMessageTime),
     );
   }
 

@@ -7,6 +7,7 @@ import 'package:mockito/mockito.dart';
 
 import 'package:flutter_real_time_chat/core/errors/failures.dart';
 import 'package:flutter_real_time_chat/core/utils/logger.dart';
+import 'package:flutter_real_time_chat/core/services/user_context_service.dart';
 import 'package:flutter_real_time_chat/features/chat/data/datasources/chat_remote_data_source.dart';
 import 'package:flutter_real_time_chat/features/chat/data/models/chat_room_model.dart';
 import 'package:flutter_real_time_chat/features/chat/data/models/message_model.dart';
@@ -16,17 +17,20 @@ import 'package:flutter_real_time_chat/features/chat/domain/entities/message.dar
 
 import 'chat_repository_impl_test.mocks.dart';
 
-@GenerateMocks([ChatRemoteDataSource, Logger])
+@GenerateMocks([ChatRemoteDataSource, Logger, UserContextService])
 void main() {
   late ChatRepositoryImpl repository;
   late MockChatRemoteDataSource mockRemoteDataSource;
   late MockLogger mockLogger;
+  late MockUserContextService mockUserContextService;
 
   setUp(() {
     mockRemoteDataSource = MockChatRemoteDataSource();
     mockLogger = MockLogger();
+    mockUserContextService = MockUserContextService();
     repository = ChatRepositoryImpl(
       remoteDataSource: mockRemoteDataSource,
+      userContextService: mockUserContextService,
       logger: mockLogger,
     );
   });

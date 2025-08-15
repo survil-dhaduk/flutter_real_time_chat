@@ -108,6 +108,7 @@ class ChatRoomModel extends ChatRoom {
     List<String>? participants,
     String? lastMessageId,
     DateTime? lastMessageTime,
+    bool clearLastMessageTime = false,
   }) {
     return ChatRoomModel(
       id: id ?? this.id,
@@ -117,7 +118,9 @@ class ChatRoomModel extends ChatRoom {
       createdAt: createdAt ?? this.createdAt,
       participants: participants ?? this.participants,
       lastMessageId: lastMessageId ?? this.lastMessageId,
-      lastMessageTime: lastMessageTime ?? this.lastMessageTime,
+      lastMessageTime: clearLastMessageTime
+          ? null
+          : (lastMessageTime ?? this.lastMessageTime),
     );
   }
 
