@@ -78,7 +78,7 @@
   - Write unit tests for repository implementations
   - _Requirements: 5.3, 5.6_
 
-- [ ] 10. Set up dependency injection container
+- [x] 10. Set up dependency injection container
 
   - Configure GetIt service locator with all dependencies
   - Register BLoCs, use cases, repositories, and data sources
@@ -86,7 +86,7 @@
   - Create initialization function for dependency setup
   - _Requirements: 5.2, 5.5_
 
-- [ ] 11. Implement authentication BLoC
+- [x] 11. Implement authentication BLoC
 
   - Create AuthEvent classes (SignInRequested, SignUpRequested, SignOutRequested, AuthStatusChanged)
   - Create AuthState classes (AuthInitial, AuthLoading, AuthAuthenticated, AuthUnauthenticated, AuthError)
