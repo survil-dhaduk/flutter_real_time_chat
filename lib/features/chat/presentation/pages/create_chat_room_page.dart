@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/routing/routing.dart';
 
 import '../bloc/chat_bloc.dart';
 import '../bloc/chat_event.dart';
@@ -61,7 +62,7 @@ class _CreateChatRoomPageState extends State<CreateChatRoomPage> {
                 backgroundColor: AppColors.success,
               ),
             );
-            Navigator.of(context).pop();
+            NavigationService.goBack();
           } else if (state is ChatError &&
               state.operation == 'create_chat_room') {
             ScaffoldMessenger.of(context).showSnackBar(

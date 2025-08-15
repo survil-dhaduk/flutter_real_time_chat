@@ -3,12 +3,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/widgets/loading_indicator.dart';
+import '../../../../core/routing/routing.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
 
 import '../bloc/chat_bloc.dart';
 import '../bloc/chat_event.dart';
 import '../bloc/chat_state.dart';
 import '../widgets/chat_room_card.dart';
-import 'create_chat_room_page.dart';
 
 /// Page that displays a list of available chat rooms with real-time updates
 class ChatRoomsListPage extends StatefulWidget {
@@ -59,34 +60,66 @@ class _ChatRoomsListPageState extends State<ChatRoomsListPage> {
               onPressed: () => _navigateToCreateRoom(context),
               tooltip: 'Create Room',
             ),
+            PopupMenuButton<String>(
+              onSelected: (value) {
+                if (value == 'logout') {
+                  _handleSignOut(context);
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'logout',
+                  child: Row(
+                    children: [
+                      Icon(Icons.logout),
+                      SizedBox(width: 8),
+                      Text('Sign Out'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
-        body: BlocConsumer<ChatBloc, ChatState>(
-          listener: (context, state) {
-            if (state is ChatError) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(state.message),
-                  backgroundColor: AppColors.error,
-                ),
-              );
-            } else if (state is ChatRoomCreated) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Chat room created successfully!'),
-                  backgroundColor: AppColors.success,
-                ),
-              );
-            }
-          },
-          builder: (context, state) {
-            return RefreshIndicator(
-              onRefresh: () async {
-                _chatBloc.add(const LoadChatRooms());
+        body: MultiBlocListener(
+          listeners: [
+            BlocListener<AuthBloc, AuthState>(
+              listener: (context, state) {
+                if (state is AuthUnauthenticated) {
+                  NavigationService.navigateToLogin();
+                }
               },
-              child: _buildBody(context, state),
-            );
-          },
+            ),
+            BlocListener<ChatBloc, ChatState>(
+              listener: (context, state) {
+                if (state is ChatError) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(state.message),
+                      backgroundColor: AppColors.error,
+                    ),
+                  );
+                } else if (state is ChatRoomCreated) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Chat room created successfully!'),
+                      backgroundColor: AppColors.success,
+                    ),
+                  );
+                }
+              },
+            ),
+          ],
+          child: BlocBuilder<ChatBloc, ChatState>(
+            builder: (context, state) {
+              return RefreshIndicator(
+                onRefresh: () async {
+                  _chatBloc.add(const LoadChatRooms());
+                },
+                child: _buildBody(context, state),
+              );
+            },
+          ),
         ),
         floatingActionButton: FloatingActionButton(
           onPressed: () => _navigateToCreateRoom(context),
@@ -212,25 +245,40 @@ class _ChatRoomsListPageState extends State<ChatRoomsListPage> {
   }
 
   void _navigateToCreateRoom(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => BlocProvider.value(
-          value: _chatBloc,
-          child: const CreateChatRoomPage(),
-        ),
-      ),
-    );
+    NavigationService.navigateToCreateChatRoom();
   }
 
   void _joinRoom(BuildContext context, String roomId) {
-    _chatBloc.add(JoinChatRoom(roomId: roomId));
+    // Get room name from the room data
+    final chatRooms = _extractChatRooms(context.read<ChatBloc>().state);
+    final room = chatRooms.firstWhere(
+      (room) => room.id == roomId,
+      orElse: () => null,
+    );
 
-    // Navigate to chat page (this will be implemented in task 15)
-    // For now, show a snackbar
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Joining room: $roomId'),
-        backgroundColor: AppColors.info,
+    final roomName = room?.name ?? 'Chat Room';
+    NavigationService.navigateToChatRoom(roomId, roomName);
+  }
+
+  void _handleSignOut(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sign Out'),
+        content: const Text('Are you sure you want to sign out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              context.read<AuthBloc>().add(const SignOutRequested());
+            },
+            child: const Text('Sign Out'),
+          ),
+        ],
       ),
     );
   }

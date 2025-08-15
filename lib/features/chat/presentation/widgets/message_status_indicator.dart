@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../domain/entities/message.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/constants/app_spacing.dart';
+import '../../../../core/theme/chat_theme.dart';
 
 /// Widget that displays message status indicators with detailed information
 class MessageStatusIndicator extends StatelessWidget {
@@ -31,26 +33,27 @@ class MessageStatusIndicator extends StatelessWidget {
     switch (message.status) {
       case MessageStatus.sent:
         iconData = Icons.check;
-        iconColor = AppColors.textOnPrimary.withValues(alpha: 0.7);
+        iconColor = AppColors.messageSent;
         break;
       case MessageStatus.delivered:
         iconData = Icons.done_all;
-        iconColor = AppColors.textOnPrimary.withValues(alpha: 0.7);
+        iconColor = AppColors.messageDelivered;
         break;
       case MessageStatus.read:
         iconData = Icons.done_all;
-        iconColor = AppColors.success;
+        iconColor = AppColors.messageRead;
         break;
     }
 
     return Icon(
       iconData,
-      size: 16,
+      size: AppSpacing.iconXs,
       color: iconColor,
     );
   }
 
   Widget _buildDetailedStatus(BuildContext context) {
+    final chatTheme = context.chatTheme;
     final readCount = message.readBy.length;
     final totalParticipants = roomParticipants.length - 1; // Exclude sender
 
@@ -61,12 +64,12 @@ class MessageStatusIndicator extends StatelessWidget {
         children: [
           _buildSimpleStatus(),
           if (totalParticipants > 1 && readCount > 0) ...[
-            const SizedBox(width: 2),
+            const SizedBox(width: AppSpacing.xs),
             Text(
               '$readCount',
               style: TextStyle(
                 fontSize: 10,
-                color: AppColors.textOnPrimary.withValues(alpha: 0.7),
+                color: chatTheme.onSentMessageBubbleColor.withOpacity(0.7),
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -99,6 +102,7 @@ class _MessageStatusDetails extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final readParticipants = <String>[];
     final unreadParticipants = <String>[];
 
@@ -114,51 +118,54 @@ class _MessageStatusDetails extends StatelessWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'Message Status',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
 
           // Message info
           _buildStatusRow(
+            context: context,
             icon: Icons.schedule,
             label: 'Sent',
             value: _formatTimestamp(message.timestamp),
-            color: AppColors.textSecondary,
+            color: theme.colorScheme.onSurfaceVariant,
           ),
 
           if (message.status == MessageStatus.delivered ||
               message.status == MessageStatus.read) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
             _buildStatusRow(
+              context: context,
               icon: Icons.done_all,
               label: 'Delivered',
               value: 'To all participants',
-              color: AppColors.textSecondary,
+              color: theme.colorScheme.onSurfaceVariant,
             ),
           ],
 
           if (readParticipants.isNotEmpty) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
             Text(
               'Read by ${readParticipants.length} participant${readParticipants.length == 1 ? '' : 's'}',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppColors.success,
-                    fontWeight: FontWeight.w500,
-                  ),
+              style: theme.textTheme.titleMedium?.copyWith(
+                color: AppColors.success,
+                fontWeight: FontWeight.w500,
+              ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
             ...readParticipants.map((participantId) {
               final readTime = message.readBy[participantId];
               return _buildParticipantRow(
+                context: context,
                 participantId: participantId,
                 timestamp: readTime,
                 isRead: true,
@@ -167,17 +174,18 @@ class _MessageStatusDetails extends StatelessWidget {
           ],
 
           if (unreadParticipants.isNotEmpty) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
             Text(
               'Not read by ${unreadParticipants.length} participant${unreadParticipants.length == 1 ? '' : 's'}',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w500,
-                  ),
+              style: theme.textTheme.titleMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w500,
+              ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
             ...unreadParticipants.map((participantId) {
               return _buildParticipantRow(
+                context: context,
                 participantId: participantId,
                 timestamp: null,
                 isRead: false,
@@ -185,7 +193,7 @@ class _MessageStatusDetails extends StatelessWidget {
             }),
           ],
 
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
           SizedBox(
             width: double.infinity,
             child: TextButton(
@@ -199,6 +207,7 @@ class _MessageStatusDetails extends StatelessWidget {
   }
 
   Widget _buildStatusRow({
+    required BuildContext context,
     required IconData icon,
     required String label,
     required String value,
@@ -206,8 +215,8 @@ class _MessageStatusDetails extends StatelessWidget {
   }) {
     return Row(
       children: [
-        Icon(icon, size: 16, color: color),
-        const SizedBox(width: 8),
+        Icon(icon, size: AppSpacing.iconXs, color: color),
+        const SizedBox(width: AppSpacing.sm),
         Text(
           label,
           style: TextStyle(
@@ -225,27 +234,30 @@ class _MessageStatusDetails extends StatelessWidget {
   }
 
   Widget _buildParticipantRow({
+    required BuildContext context,
     required String participantId,
     required DateTime? timestamp,
     required bool isRead,
   }) {
+    final theme = Theme.of(context);
+
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
       child: Row(
         children: [
           CircleAvatar(
-            radius: 16,
-            backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+            radius: AppSpacing.lg,
+            backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
             child: Text(
               participantId.substring(0, 1).toUpperCase(),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: AppColors.primary,
+                color: theme.colorScheme.primary,
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -261,7 +273,7 @@ class _MessageStatusDetails extends StatelessWidget {
                     'Read ${_formatTimestamp(timestamp)}',
                     style: TextStyle(
                       fontSize: 12,
-                      color: AppColors.textSecondary,
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
               ],
@@ -269,8 +281,9 @@ class _MessageStatusDetails extends StatelessWidget {
           ),
           Icon(
             isRead ? Icons.done_all : Icons.schedule,
-            size: 16,
-            color: isRead ? AppColors.success : AppColors.textHint,
+            size: AppSpacing.iconXs,
+            color:
+                isRead ? AppColors.success : theme.colorScheme.onSurfaceVariant,
           ),
         ],
       ),

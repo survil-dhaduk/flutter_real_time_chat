@@ -13,11 +13,13 @@ import '../../../../core/widgets/loading_indicator.dart';
 
 /// Chat page that displays messages and allows sending new messages
 class ChatPage extends StatefulWidget {
-  final ChatRoom chatRoom;
+  final String roomId;
+  final String roomName;
 
   const ChatPage({
     super.key,
-    required this.chatRoom,
+    required this.roomId,
+    required this.roomName,
   });
 
   @override
@@ -31,6 +33,7 @@ class _ChatPageState extends State<ChatPage> {
 
   User? _currentUser;
   List<Message> _messages = [];
+  ChatRoom? _chatRoom;
 
   @override
   void initState() {
@@ -46,15 +49,13 @@ class _ChatPageState extends State<ChatPage> {
     }
 
     // Join the chat room and start listening to messages
-    context.read<ChatBloc>().add(JoinChatRoom(roomId: widget.chatRoom.id));
+    context.read<ChatBloc>().add(JoinChatRoom(roomId: widget.roomId));
     context
         .read<ChatBloc>()
-        .add(StartListeningToMessages(roomId: widget.chatRoom.id));
+        .add(StartListeningToMessages(roomId: widget.roomId));
 
     // Mark all messages as read when entering the room
-    context
-        .read<ChatBloc>()
-        .add(MarkAllMessagesAsRead(roomId: widget.chatRoom.id));
+    context.read<ChatBloc>().add(MarkAllMessagesAsRead(roomId: widget.roomId));
   }
 
   @override
@@ -62,7 +63,7 @@ class _ChatPageState extends State<ChatPage> {
     // Stop listening to messages when leaving the page
     context
         .read<ChatBloc>()
-        .add(StopListeningToMessages(roomId: widget.chatRoom.id));
+        .add(StopListeningToMessages(roomId: widget.roomId));
     _messageController.dispose();
     _scrollController.dispose();
     _messageFocusNode.dispose();

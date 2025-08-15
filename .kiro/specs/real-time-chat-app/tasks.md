@@ -143,7 +143,7 @@
   - Update message bubbles with real-time status changes
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6_
 
-- [ ] 17. Create app theme and styling
+- [x] 17. Create app theme and styling
 
   - Implement AppTheme with Material Design 3 colors
   - Create consistent styling for chat bubbles and UI components

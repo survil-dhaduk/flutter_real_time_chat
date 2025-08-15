@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../domain/entities/message.dart';
 import '../../../auth/domain/entities/user.dart';
-import '../../../../core/constants/app_colors.dart';
+import '../../../../core/theme/chat_theme.dart';
+import '../../../../core/constants/app_spacing.dart';
 import 'message_visibility_detector.dart';
 import 'message_status_indicator.dart';
 
@@ -31,14 +32,17 @@ class MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final chatTheme = context.chatTheme;
+    final theme = Theme.of(context);
+
     final bubbleWidget = GestureDetector(
       onTap: onTap,
       child: Container(
         margin: EdgeInsets.only(
-          left: isCurrentUser ? 64.0 : 16.0,
-          right: isCurrentUser ? 16.0 : 64.0,
-          top: 4.0,
-          bottom: 4.0,
+          left: isCurrentUser ? AppSpacing.avatarLg : AppSpacing.lg,
+          right: isCurrentUser ? AppSpacing.lg : AppSpacing.avatarLg,
+          top: AppSpacing.xs,
+          bottom: AppSpacing.xs,
         ),
         child: Column(
           crossAxisAlignment:
@@ -46,44 +50,49 @@ class MessageBubble extends StatelessWidget {
           children: [
             if (showSenderName && !isCurrentUser && sender != null)
               Padding(
-                padding: const EdgeInsets.only(left: 12.0, bottom: 4.0),
+                padding: const EdgeInsets.only(
+                  left: AppSpacing.md,
+                  bottom: AppSpacing.xs,
+                ),
                 child: Text(
                   sender!.displayName,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w500,
-                      ),
+                  style: chatTheme.senderNameStyle,
                 ),
               ),
             Container(
               decoration: BoxDecoration(
                 color: isCurrentUser
-                    ? AppColors.sentMessage
-                    : AppColors.receivedMessage,
+                    ? chatTheme.sentMessageBubbleColor
+                    : chatTheme.receivedMessageBubbleColor,
                 borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(16.0),
-                  topRight: const Radius.circular(16.0),
-                  bottomLeft: Radius.circular(isCurrentUser ? 16.0 : 4.0),
-                  bottomRight: Radius.circular(isCurrentUser ? 4.0 : 16.0),
+                  topLeft: Radius.circular(chatTheme.messageBubbleRadius),
+                  topRight: Radius.circular(chatTheme.messageBubbleRadius),
+                  bottomLeft: Radius.circular(
+                    isCurrentUser
+                        ? chatTheme.messageBubbleRadius
+                        : AppSpacing.radiusXs,
+                  ),
+                  bottomRight: Radius.circular(
+                    isCurrentUser
+                        ? AppSpacing.radiusXs
+                        : chatTheme.messageBubbleRadius,
+                  ),
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
+                    color: theme.colorScheme.shadow.withOpacity(0.1),
                     blurRadius: 2,
                     offset: const Offset(0, 1),
                   ),
                 ],
               ),
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16.0,
-                vertical: 12.0,
-              ),
+              padding: chatTheme.messageBubblePadding,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildMessageContent(context),
                   if (showTimestamp || isCurrentUser) ...[
-                    const SizedBox(height: 4.0),
+                    const SizedBox(height: AppSpacing.xs),
                     _buildMessageFooter(context),
                   ],
                 ],
@@ -107,22 +116,25 @@ class MessageBubble extends StatelessWidget {
   }
 
   Widget _buildMessageContent(BuildContext context) {
+    final chatTheme = context.chatTheme;
+    final theme = Theme.of(context);
+
     switch (message.type) {
       case MessageType.text:
         return Text(
           message.content,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: isCurrentUser
-                    ? AppColors.textOnPrimary
-                    : AppColors.textPrimary,
-              ),
+          style: chatTheme.messageTextStyle.copyWith(
+            color: isCurrentUser
+                ? chatTheme.onSentMessageBubbleColor
+                : chatTheme.onReceivedMessageBubbleColor,
+          ),
         );
       case MessageType.image:
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ClipRRect(
-              borderRadius: BorderRadius.circular(8.0),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
               child: Image.network(
                 message.content,
                 width: 200,
@@ -133,13 +145,13 @@ class MessageBubble extends StatelessWidget {
                     width: 200,
                     height: 150,
                     decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(8.0),
+                      color: theme.colorScheme.surfaceVariant,
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.broken_image,
-                      color: Colors.grey,
-                      size: 48,
+                      color: theme.colorScheme.onSurfaceVariant,
+                      size: AppSpacing.iconXxl,
                     ),
                   );
                 },
@@ -149,11 +161,13 @@ class MessageBubble extends StatelessWidget {
                     width: 200,
                     height: 150,
                     decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(8.0),
+                      color: theme.colorScheme.surfaceVariant,
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
                     ),
-                    child: const Center(
-                      child: CircularProgressIndicator(),
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        color: theme.colorScheme.primary,
+                      ),
                     ),
                   );
                 },
@@ -168,20 +182,20 @@ class MessageBubble extends StatelessWidget {
             Icon(
               Icons.attach_file,
               color: isCurrentUser
-                  ? AppColors.textOnPrimary
-                  : AppColors.textPrimary,
-              size: 20,
+                  ? chatTheme.onSentMessageBubbleColor
+                  : chatTheme.onReceivedMessageBubbleColor,
+              size: AppSpacing.iconSm,
             ),
-            const SizedBox(width: 8.0),
+            const SizedBox(width: AppSpacing.sm),
             Flexible(
               child: Text(
                 message.content.split('/').last, // Show filename
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: isCurrentUser
-                          ? AppColors.textOnPrimary
-                          : AppColors.textPrimary,
-                      decoration: TextDecoration.underline,
-                    ),
+                style: chatTheme.messageTextStyle.copyWith(
+                  color: isCurrentUser
+                      ? chatTheme.onSentMessageBubbleColor
+                      : chatTheme.onReceivedMessageBubbleColor,
+                  decoration: TextDecoration.underline,
+                ),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -191,20 +205,21 @@ class MessageBubble extends StatelessWidget {
   }
 
   Widget _buildMessageFooter(BuildContext context) {
+    final chatTheme = context.chatTheme;
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         if (showTimestamp) ...[
           Text(
             _formatTimestamp(message.timestamp),
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: isCurrentUser
-                      ? AppColors.textOnPrimary.withValues(alpha: 0.7)
-                      : AppColors.textSecondary,
-                  fontSize: 11,
-                ),
+            style: chatTheme.messageTimestampStyle.copyWith(
+              color: isCurrentUser
+                  ? chatTheme.onSentMessageBubbleColor.withOpacity(0.7)
+                  : chatTheme.messageTimestampColor,
+            ),
           ),
-          if (isCurrentUser) const SizedBox(width: 4.0),
+          if (isCurrentUser) const SizedBox(width: AppSpacing.xs),
         ],
         if (isCurrentUser)
           MessageStatusIndicator(

@@ -5,8 +5,8 @@ import '../../../../core/constants/app_strings.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../core/widgets/loading_indicator.dart';
+import '../../../../core/routing/routing.dart';
 import '../bloc/auth_bloc.dart';
-import 'login_page.dart';
 
 /// Registration page for new user sign up
 class RegisterPage extends StatefulWidget {
@@ -49,11 +49,7 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   void _navigateToLogin() {
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (context) => const LoginPage(),
-      ),
-    );
+    NavigationService.navigateToLogin();
   }
 
   void _showErrorSnackBar(String message) {
@@ -79,6 +75,8 @@ class _RegisterPageState extends State<RegisterPage> {
         listener: (context, state) {
           if (state is AuthError) {
             _showErrorSnackBar(state.message);
+          } else if (state is AuthAuthenticated) {
+            NavigationService.navigateToChatRoomsList();
           }
         },
         child: BlocBuilder<AuthBloc, AuthState>(
