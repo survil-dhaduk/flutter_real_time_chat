@@ -1,13 +1,13 @@
 # Implementation Plan
 
-- [-] 1. Set up project dependencies and Firebase configuration
+- [x] 1. Set up project dependencies and Firebase configuration
 
   - Add required dependencies to pubspec.yaml (firebase_core, cloud_firestore, firebase_auth, flutter_bloc, get_it, dartz, equatable)
   - Configure Firebase project and add configuration files for Android and iOS
   - Initialize Firebase in main.dart
   - _Requirements: 5.6_
 
-- [ ] 2. Implement core domain entities and value objects
+- [x] 2. Implement core domain entities and value objects
 
   - Create User entity with validation methods
   - Create ChatRoom entity with participant management
@@ -15,14 +15,14 @@
   - Implement MessageType and MessageStatus enums
   - _Requirements: 1.5, 2.6, 3.5, 4.5_
 
-- [ ] 3. Define repository interfaces and failure types
+- [x] 3. Define repository interfaces and failure types
 
   - Create AuthRepository interface with authentication methods
   - Create ChatRepository interface with messaging methods
   - Implement custom Failure classes (ServerFailure, NetworkFailure, AuthFailure, ValidationFailure)
   - _Requirements: 5.1, 5.7_
 
-- [ ] 4. Implement authentication use cases
+- [x] 4. Implement authentication use cases
 
   - Create SignInUseCase with email/password validation
   - Create SignUpUseCase with user profile creation
