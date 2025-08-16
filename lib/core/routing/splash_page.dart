@@ -3,22 +3,38 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../core/widgets/loading_indicator.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
-import 'route_names.dart';
+import 'navigation_service.dart';
 
 /// Splash screen that handles initial authentication check
-class SplashPage extends StatelessWidget {
-  const SplashPage({super.key});
+class SplashPage extends StatefulWidget {
+  final String? deepLink;
 
+  const SplashPage({
+    super.key,
+    this.deepLink,
+  });
+
+  @override
+  State<SplashPage> createState() => _SplashPageState();
+}
+
+class _SplashPageState extends State<SplashPage> {
   @override
   Widget build(BuildContext context) {
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
         if (state is AuthAuthenticated) {
-          // User is authenticated, navigate to chat rooms list
-          Navigator.of(context).pushReplacementNamed(RouteNames.chatRoomsList);
+          // User is authenticated, handle initial route or deep link
+          NavigationService.handleInitialRoute(true, deepLink: widget.deepLink);
         } else if (state is AuthUnauthenticated || state is AuthError) {
-          // User is not authenticated, navigate to login
-          Navigator.of(context).pushReplacementNamed(RouteNames.login);
+          // User is not authenticated
+          if (widget.deepLink != null && widget.deepLink!.isNotEmpty) {
+            // Store deep link for after authentication
+            // For now, just navigate to login
+            NavigationService.navigateToLogin();
+          } else {
+            NavigationService.navigateToLogin();
+          }
         }
       },
       child: Scaffold(
@@ -60,7 +76,7 @@ class SplashPage extends StatelessWidget {
                       color: Theme.of(context)
                           .colorScheme
                           .onPrimary
-                          .withOpacity(0.8),
+                          .withValues(alpha: 0.8),
                     ),
               ),
               const SizedBox(height: 48),

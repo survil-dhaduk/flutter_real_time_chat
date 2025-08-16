@@ -10,20 +10,13 @@ class RouteGuard {
   static bool checkAuthentication(BuildContext context, String routeName) {
     final authState = context.read<AuthBloc>().state;
 
-    // List of routes that require authentication
-    const protectedRoutes = [
-      RouteNames.chatRoomsList,
-      RouteNames.createChatRoom,
-      RouteNames.chat,
-    ];
+    // Handle deep link patterns
+    String normalizedRouteName = routeName;
+    if (routeName.startsWith('/chat/') && routeName != '/chat') {
+      normalizedRouteName = RouteNames.chat;
+    }
 
-    // List of routes that should redirect authenticated users
-    const authRoutes = [
-      RouteNames.login,
-      RouteNames.register,
-    ];
-
-    if (protectedRoutes.contains(routeName)) {
+    if (RouteNames.requiresAuthentication(normalizedRouteName)) {
       if (authState is! AuthAuthenticated) {
         // User is not authenticated, redirect to login
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -34,7 +27,7 @@ class RouteGuard {
         });
         return false;
       }
-    } else if (authRoutes.contains(routeName)) {
+    } else if (RouteNames.shouldRedirectAuthenticated(normalizedRouteName)) {
       if (authState is AuthAuthenticated) {
         // User is already authenticated, redirect to chat rooms
         WidgetsBinding.instance.addPostFrameCallback((_) {

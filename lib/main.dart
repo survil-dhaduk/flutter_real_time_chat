@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'injection/injection.dart';
 import 'core/theme/app_theme.dart';
@@ -19,6 +18,9 @@ void main() async {
   // Initialize user context service
   await sl<UserContextService>().initialize();
 
+  // Initialize deep link handling
+  DeepLinkHandler.initialize();
+
   // Verify dependencies are initialized (for debugging)
   // print('Dependencies initialized: ${areDependenciesInitialized()}');
 
@@ -35,6 +37,7 @@ class MyApp extends StatelessWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       navigatorKey: NavigationService.navigatorKey,
+      navigatorObservers: [AppRouteObserver()],
       initialRoute: RouteNames.splash,
       onGenerateRoute: AppRouter.generateRoute,
       debugShowCheckedModeBanner: false,

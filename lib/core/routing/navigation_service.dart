@@ -98,16 +98,45 @@ class NavigationService {
   /// Handle deep link
   static Future<void> handleDeepLink(String link) {
     final uri = Uri.parse(link);
+    final path = uri.path;
 
     // Handle chat room deep links
-    if (uri.pathSegments.isNotEmpty && uri.pathSegments[0] == 'chat') {
+    if (path.startsWith('/chat')) {
       final roomId = RouteNames.extractRoomIdFromPath(link);
       if (roomId != null) {
         return navigateToChatRoom(roomId, 'Chat Room');
       }
     }
 
-    // Default to splash if deep link is not recognized
-    return navigateAndClearStack(RouteNames.splash);
+    // Handle other deep links
+    switch (path) {
+      case RouteNames.login:
+        return navigateToLogin();
+      case RouteNames.register:
+        return navigateToRegister();
+      case RouteNames.chatRoomsList:
+        return navigateToChatRoomsList();
+      case RouteNames.createChatRoom:
+        return navigateToCreateChatRoom();
+      default:
+        // Default to splash if deep link is not recognized
+        return navigateAndClearStack(RouteNames.splash);
+    }
+  }
+
+  /// Handle initial route based on authentication state
+  static Future<void> handleInitialRoute(bool isAuthenticated,
+      {String? deepLink}) {
+    if (deepLink != null && deepLink.isNotEmpty) {
+      // Handle deep link if provided
+      return handleDeepLink(deepLink);
+    }
+
+    // Default routing based on authentication state
+    if (isAuthenticated) {
+      return navigateToChatRoomsList();
+    } else {
+      return navigateToLogin();
+    }
   }
 }

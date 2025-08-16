@@ -91,14 +91,14 @@ class _ChatPageState extends State<ChatPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            widget.chatRoom.name,
+            widget.roomName,
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
             ),
           ),
           Text(
-            '${widget.chatRoom.participants.length} participants',
+            '${_chatRoom?.participants.length ?? 0} participants',
             style: const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.normal,
@@ -137,11 +137,17 @@ class _ChatPageState extends State<ChatPage> {
               _scrollToBottom();
             });
           }
+          // Update chat room if available
+          if (state.currentRoom != null) {
+            _chatRoom = state.currentRoom;
+          }
         } else if (state is MessagesLoaded) {
           _messages = state.messages;
           WidgetsBinding.instance.addPostFrameCallback((_) {
             _scrollToBottom();
           });
+        } else if (state is ChatRoomJoined) {
+          _chatRoom = state.chatRoom;
         }
       },
       builder: (context, state) {
@@ -207,13 +213,13 @@ class _ChatPageState extends State<ChatPage> {
           isCurrentUser: isCurrentUser,
           showTimestamp: showTimestamp,
           showSenderName: showSenderName,
-          roomParticipants: widget.chatRoom.participants,
+          roomParticipants: _chatRoom?.participants ?? [],
           onTap: () {
             if (!isCurrentUser && message.status != MessageStatus.read) {
               context.read<ChatBloc>().add(
                     MarkMessageAsRead(
                       messageId: message.id,
-                      roomId: widget.chatRoom.id,
+                      roomId: widget.roomId,
                     ),
                   );
             }
@@ -223,7 +229,7 @@ class _ChatPageState extends State<ChatPage> {
                   context.read<ChatBloc>().add(
                         MessageBecameVisible(
                           messageId: message.id,
-                          roomId: widget.chatRoom.id,
+                          roomId: widget.roomId,
                         ),
                       );
                 }
@@ -319,7 +325,7 @@ class _ChatPageState extends State<ChatPage> {
 
     context.read<ChatBloc>().add(
           SendMessage(
-            roomId: widget.chatRoom.id,
+            roomId: widget.roomId,
             content: content,
             type: MessageType.text,
           ),
@@ -426,17 +432,17 @@ class _ChatPageState extends State<ChatPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(widget.chatRoom.name),
+        title: Text(widget.roomName),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Description: ${widget.chatRoom.description}'),
+            Text('Description: ${_chatRoom?.description ?? 'No description'}'),
             const SizedBox(height: 8),
             Text(
-                'Created: ${widget.chatRoom.createdAt.toString().split('.')[0]}'),
+                'Created: ${_chatRoom?.createdAt.toString().split('.')[0] ?? 'Unknown'}'),
             const SizedBox(height: 8),
-            Text('Participants: ${widget.chatRoom.participants.length}'),
+            Text('Participants: ${_chatRoom?.participants.length ?? 0}'),
           ],
         ),
         actions: [
@@ -458,9 +464,9 @@ class _ChatPageState extends State<ChatPage> {
           width: double.maxFinite,
           child: ListView.builder(
             shrinkWrap: true,
-            itemCount: widget.chatRoom.participants.length,
+            itemCount: _chatRoom?.participants.length ?? 0,
             itemBuilder: (context, index) {
-              final participantId = widget.chatRoom.participants[index];
+              final participantId = _chatRoom?.participants[index] ?? '';
               return ListTile(
                 leading: CircleAvatar(
                   child: Text(participantId.substring(0, 1).toUpperCase()),
