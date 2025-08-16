@@ -12,6 +12,18 @@ A modern, production-ready real-time chat application built with Flutter and Fir
 - 🎨 **Modern UI** - Material Design 3 with dark/light theme support
 - 🏗️ **Clean Architecture** - Scalable codebase with proper separation of concerns
 
+## 📸 Screenshots
+
+<div align="center">
+  <img src="screenshot/login_screen.png" alt="Login Screen" width="200"/>
+  <img src="screenshot/register_screen.png" alt="Register Screen" width="200"/>
+  <img src="screenshot/chat_room_list_screen.png" alt="Chat Room List Screen" width="200"/>
+  <img src="screenshot/create_room_screen.png" alt="Create Room Screen" width="200"/>
+  <img src="screenshot/chat_screen.png" alt="Chat Screen" width="200"/>
+</div>
+
+_From left to right: Login Screen, Register Screen, Chat Room List Screen, Create Room Screen, Chat Screen_
+
 ## 🚀 Quick Start
 
 ### Prerequisites
