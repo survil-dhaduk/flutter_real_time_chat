@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../constants/app_strings.dart';
 import '../widgets/error_widgets.dart';
-import '../utils/error_handler.dart';
 
 /// A widget that catches and handles errors in its child widget tree
 class ErrorBoundary extends StatefulWidget {

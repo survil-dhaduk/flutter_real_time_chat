@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_real_time_chat/injection/injection.dart';
 
 import '../../core/widgets/loading_indicator.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
@@ -22,6 +23,7 @@ class _SplashPageState extends State<SplashPage> {
   @override
   Widget build(BuildContext context) {
     return BlocListener<AuthBloc, AuthState>(
+    
       listener: (context, state) {
         if (state is AuthAuthenticated) {
           // User is authenticated, handle initial route or deep link

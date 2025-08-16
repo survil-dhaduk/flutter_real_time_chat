@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_real_time_chat/features/chat/domain/entities/chat_room.dart';
 import '../../../../core/constants/app_colors.dart';
 
 import '../../../../core/widgets/loading_indicator.dart';
@@ -225,10 +226,10 @@ class _ChatRoomsListPageState extends State<ChatRoomsListPage> {
   void _joinRoom(BuildContext context, String roomId) {
     // Get room name from the room data
     final chatRooms = _extractChatRooms(context.read<ChatBloc>().state);
-    final room = chatRooms.firstWhere(
-      (room) => room.id == roomId,
-      orElse: () => null,
-    );
+   final room = chatRooms.firstWhere(
+  (room) => room.id == roomId,
+  orElse: () => ChatRoom.empty(), // define an empty/fallback ChatRoom
+);
 
     final roomName = room?.name ?? 'Chat Room';
     NavigationService.navigateToChatRoom(roomId, roomName);

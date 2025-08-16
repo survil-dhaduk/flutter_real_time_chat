@@ -117,6 +117,15 @@ class ChatRoom extends Equatable {
         participants.contains(createdBy);
   }
 
+  factory ChatRoom.empty() => ChatRoom(
+        id: '',
+        name: '',
+        description: '',
+        createdBy: '',
+        createdAt: DateTime.fromMillisecondsSinceEpoch(0), // default to epoch
+        participants: const [],
+      );
+
   @override
   List<Object?> get props => [
         id,

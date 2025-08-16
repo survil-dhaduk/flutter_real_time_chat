@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_real_time_chat/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:flutter_real_time_chat/features/chat/presentation/bloc/chat_bloc.dart';
 
 import 'injection/injection.dart';
 import 'core/theme/app_theme.dart';
@@ -47,7 +50,15 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ErrorBoundary(
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<AuthBloc>(
+          create: (context) => sl<AuthBloc>(),
+        ),
+        BlocProvider<ChatBloc>(
+          create: (context) => sl<ChatBloc>(),
+        ),
+      ],
       child: MaterialApp(
         title: 'Real-Time Chat',
         theme: AppTheme.lightTheme,

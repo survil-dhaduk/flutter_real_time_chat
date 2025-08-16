@@ -32,7 +32,7 @@ class _ChatPageState extends State<ChatPage> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final FocusNode _messageFocusNode = FocusNode();
-
+  ChatBloc? _chatBloc;
   bool _isLoadingMore = false;
   bool _hasMoreMessages = true;
 
@@ -43,6 +43,7 @@ class _ChatPageState extends State<ChatPage> {
   @override
   void initState() {
     super.initState();
+      _chatBloc = context.read<ChatBloc>();
     _initializePage();
     _setupScrollListener();
   }
@@ -78,9 +79,7 @@ class _ChatPageState extends State<ChatPage> {
   @override
   void dispose() {
     // Stop listening to messages when leaving the page
-    context
-        .read<ChatBloc>()
-        .add(StopListeningToMessages(roomId: widget.roomId));
+    _chatBloc?.add(StopListeningToMessages(roomId: widget.roomId));
     _messageController.dispose();
     _scrollController.dispose();
     _messageFocusNode.dispose();
