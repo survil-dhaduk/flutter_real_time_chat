@@ -5,6 +5,10 @@ import 'package:get_it/get_it.dart';
 // Core
 import '../core/utils/logger.dart';
 import '../core/services/user_context_service.dart';
+import '../core/services/connectivity_service.dart';
+import '../core/services/cache_service.dart';
+import '../core/services/pagination_service.dart';
+import '../core/services/memory_management_service.dart';
 
 // Auth Feature
 import '../features/auth/data/datasources/auth_remote_data_source.dart';
@@ -61,6 +65,21 @@ Future<void> initializeDependencies() async {
   // Logger - registered as singleton for consistent logging across the app
   sl.registerLazySingleton<Logger>(() => const Logger());
 
+  // Connectivity Service - registered as singleton for network monitoring
+  sl.registerLazySingleton<ConnectivityService>(() => ConnectivityService());
+
+  // Cache Service - registered as singleton for data caching
+  sl.registerLazySingleton<CacheService>(
+      () => CacheService(logger: sl<Logger>()));
+
+  // Pagination Service - registered as singleton for message pagination
+  sl.registerLazySingleton<PaginationService>(
+      () => PaginationService(logger: sl<Logger>()));
+
+  // Memory Management Service - registered as singleton for listener management
+  sl.registerLazySingleton<MemoryManagementService>(
+      () => MemoryManagementService(logger: sl<Logger>()));
+
   // ============================================================================
   // Data Sources
   // ============================================================================
@@ -102,6 +121,10 @@ Future<void> initializeDependencies() async {
     () => ChatRepositoryImpl(
       remoteDataSource: sl<ChatRemoteDataSource>(),
       userContextService: sl<UserContextService>(),
+      cacheService: sl<CacheService>(),
+      paginationService: sl<PaginationService>(),
+      memoryManagementService: sl<MemoryManagementService>(),
+      logger: sl<Logger>(),
     ),
   );
 

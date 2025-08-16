@@ -1,0 +1,35 @@
+# Build configuration for different environments
+environments:
+  development:
+    app_name: "Real-Time Chat (Dev)"
+    app_id_suffix: ".dev"
+    firebase_project: "flutter-bloc-chat-demo-dev"
+    debug: true
+
+  staging:
+    app_name: "Real-Time Chat (Staging)"
+    app_id_suffix: ".staging"
+    firebase_project: "flutter-bloc-chat-demo-staging"
+    debug: false
+
+  production:
+    app_name: "Real-Time Chat"
+    app_id_suffix: ""
+    firebase_project: "flutter-bloc-chat-demo"
+    debug: false
+
+# Build optimization settings
+build_settings:
+  android:
+    minify_enabled: true
+    shrink_resources: true
+    proguard_enabled: true
+
+  ios:
+    bitcode_enabled: false
+    strip_debug_symbols: true
+
+  flutter:
+    tree_shake_icons: true
+    split_debug_info: true
+    obfuscate: true

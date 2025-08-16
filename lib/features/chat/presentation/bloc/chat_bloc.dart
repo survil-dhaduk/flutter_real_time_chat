@@ -8,11 +8,14 @@ import '../../domain/usecases/get_messages.dart';
 import '../../domain/usecases/mark_message_as_read.dart';
 import '../../domain/entities/message.dart';
 import '../../domain/entities/chat_room.dart';
+import '../../../../core/errors/failures.dart';
+import '../../../../core/mixins/error_handling_mixin.dart';
 import 'chat_event.dart';
 import 'chat_state.dart';
 
 /// BLoC for managing chat functionality with real-time updates
-class ChatBloc extends Bloc<ChatEvent, ChatState> {
+class ChatBloc extends Bloc<ChatEvent, ChatState>
+    with ErrorHandlingMixin<ChatEvent, ChatState> {
   final GetChatRoomsUseCase _getChatRoomsUseCase;
   final CreateChatRoomUseCase _createChatRoomUseCase;
   final JoinChatRoomUseCase _joinChatRoomUseCase;
@@ -218,27 +221,31 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     SendMessage event,
     Emitter<ChatState> emit,
   ) async {
-    final params = SendMessageParams(
-      roomId: event.roomId,
-      content: event.content,
-      type: event.type,
-    );
+    try {
+      final result = await executeWithErrorHandling(
+        () => _sendMessageUseCase(SendMessageParams(
+          roomId: event.roomId,
+          content: event.content,
+          type: event.type,
+        )),
+        operationName: 'send_message',
+        maxRetries: 2, // Allow retries for message sending
+      );
 
-    final result = await _sendMessageUseCase(params);
-
-    result.fold(
-      (failure) => emit(ChatError(
-        message: failure.message,
-        operation: 'send_message',
-        previousState: state,
-      )),
-      (message) {
-        emit(MessageSent(message: message));
-
-        // The message will be received via real-time listener
-        // so we don't need to manually add it to the state here
-      },
-    );
+      result.fold(
+        (failure) => emit(ChatError(
+          message: failure.message,
+          operation: 'send_message',
+          previousState: state,
+        )),
+        (message) {
+          emit(MessageSent(message: message));
+          // The message will be received via real-time listener
+        },
+      );
+    } catch (error, stackTrace) {
+      handleError(error, stackTrace, operation: 'send_message');
+    }
   }
 
   /// Handles receiving a message via real-time listener
@@ -478,6 +485,19 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
 
       emit(currentState.copyWith(messages: updatedMessages));
     }
+  }
+
+  @override
+  void emitErrorState(
+    Failure failure, {
+    String? operation,
+    ChatState? previousState,
+  }) {
+    emit(ChatError(
+      message: failure.message,
+      operation: operation,
+      previousState: previousState ?? state,
+    ));
   }
 
   @override

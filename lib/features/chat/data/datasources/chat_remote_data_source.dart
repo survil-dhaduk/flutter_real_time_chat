@@ -35,6 +35,14 @@ abstract class ChatRemoteDataSource {
   /// Returns a stream of message lists ordered by timestamp
   Stream<List<MessageModel>> getMessages(String roomId);
 
+  /// Gets messages with pagination support
+  /// Returns a list of messages with optional pagination
+  Future<List<MessageModel>> getMessagesPaginated({
+    required String roomId,
+    int? limit,
+    String? lastMessageId,
+  });
+
   /// Gets chat rooms with real-time updates
   /// Returns a stream of chat room lists
   Stream<List<ChatRoomModel>> getChatRoomsStream();

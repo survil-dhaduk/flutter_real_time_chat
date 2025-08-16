@@ -10,6 +10,8 @@ import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../widgets/message_bubble.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/loading_indicator.dart';
+import '../../../../core/widgets/error_widgets.dart';
+import '../../../../core/utils/error_handler.dart';
 
 /// Chat page that displays messages and allows sending new messages
 class ChatPage extends StatefulWidget {
@@ -31,6 +33,9 @@ class _ChatPageState extends State<ChatPage> {
   final ScrollController _scrollController = ScrollController();
   final FocusNode _messageFocusNode = FocusNode();
 
+  bool _isLoadingMore = false;
+  bool _hasMoreMessages = true;
+
   User? _currentUser;
   List<Message> _messages = [];
   ChatRoom? _chatRoom;
@@ -39,6 +44,18 @@ class _ChatPageState extends State<ChatPage> {
   void initState() {
     super.initState();
     _initializePage();
+    _setupScrollListener();
+  }
+
+  void _setupScrollListener() {
+    _scrollController.addListener(() {
+      // Load more messages when scrolling near the top
+      if (_scrollController.position.pixels <= 100 &&
+          !_isLoadingMore &&
+          _hasMoreMessages) {
+        _loadMoreMessages();
+      }
+    });
   }
 
   void _initializePage() {
@@ -68,6 +85,23 @@ class _ChatPageState extends State<ChatPage> {
     _scrollController.dispose();
     _messageFocusNode.dispose();
     super.dispose();
+  }
+
+  void _loadMoreMessages() {
+    if (_isLoadingMore || !_hasMoreMessages) return;
+
+    setState(() {
+      _isLoadingMore = true;
+    });
+
+    // Get the oldest message ID for pagination
+    final lastMessageId = _messages.isNotEmpty ? _messages.first.id : null;
+
+    context.read<ChatBloc>().add(LoadMessages(
+          roomId: widget.roomId,
+          limit: 20,
+          lastMessageId: lastMessageId,
+        ));
   }
 
   @override
@@ -121,11 +155,12 @@ class _ChatPageState extends State<ChatPage> {
     return BlocConsumer<ChatBloc, ChatState>(
       listener: (context, state) {
         if (state is ChatError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: AppColors.error,
-            ),
+          ErrorHandler.showErrorSnackBar(
+            context,
+            state.message,
+            onRetry:
+                state.operation == 'send_message' ? () => _sendMessage() : null,
+            showRetry: state.operation == 'send_message',
           );
         } else if (state is MessageSent) {
           _messageController.clear();
@@ -142,6 +177,11 @@ class _ChatPageState extends State<ChatPage> {
             _chatRoom = state.currentRoom;
           }
         } else if (state is MessagesLoaded) {
+          setState(() {
+            _hasMoreMessages = state.hasMoreMessages ?? true;
+            _isLoadingMore = false;
+          });
+
           _messages = state.messages;
           WidgetsBinding.instance.addPostFrameCallback((_) {
             _scrollToBottom();
@@ -152,8 +192,11 @@ class _ChatPageState extends State<ChatPage> {
       },
       builder: (context, state) {
         if (state is ChatLoading && _messages.isEmpty) {
-          return const Center(
-            child: LoadingIndicator(message: 'Loading messages...'),
+          return ListView.builder(
+            itemCount: 5,
+            itemBuilder: (context, index) => MessageSkeletonLoader(
+              isOwnMessage: index % 2 == 0,
+            ),
           );
         }
 
@@ -167,45 +210,42 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(
-            Icons.chat_bubble_outline,
-            size: 64,
-            color: AppColors.textHint,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'No messages yet',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Start the conversation by sending a message',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppColors.textHint,
-                ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
+    return const EmptyStateDisplay(
+      title: 'No messages yet',
+      subtitle: 'Start the conversation by sending a message',
+      icon: Icons.chat_bubble_outline,
     );
   }
 
   Widget _buildMessagesListView() {
+    // Add 1 to item count for loading indicator at the top
+    final itemCount = _messages.length + (_isLoadingMore ? 1 : 0);
+
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.symmetric(vertical: 8.0),
-      itemCount: _messages.length,
+      itemCount: itemCount,
       itemBuilder: (context, index) {
-        final message = _messages[index];
+        // Show loading indicator at the top when loading more messages
+        if (index == 0 && _isLoadingMore) {
+          return const Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Center(
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          );
+        }
+
+        // Adjust index for messages when loading indicator is present
+        final messageIndex = _isLoadingMore ? index - 1 : index;
+        final message = _messages[messageIndex];
         final isCurrentUser = message.senderId == _currentUser?.id;
-        final showTimestamp = _shouldShowTimestamp(index);
-        final showSenderName = _shouldShowSenderName(index);
+        final showTimestamp = _shouldShowTimestamp(messageIndex);
+        final showSenderName = _shouldShowSenderName(messageIndex);
 
         return MessageBubble(
           message: message,

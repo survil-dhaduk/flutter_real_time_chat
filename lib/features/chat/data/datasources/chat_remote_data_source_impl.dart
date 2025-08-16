@@ -231,7 +231,7 @@ class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
   Stream<List<MessageModel>> getMessages(String roomId) {
     try {
       if (roomId.isEmpty) {
-        throw ValidationFailure('Room ID cannot be empty');
+        throw const ValidationFailure('Room ID cannot be empty');
       }
 
       return _firestore
@@ -251,6 +251,55 @@ class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
       });
     } catch (e) {
       throw ServerFailure('Failed to create messages stream: $e');
+    }
+  }
+
+  /// Get messages with pagination support
+  @override
+  Future<List<MessageModel>> getMessagesPaginated({
+    required String roomId,
+    int? limit,
+    String? lastMessageId,
+  }) async {
+    try {
+      if (roomId.isEmpty) {
+        throw const ValidationFailure('Room ID cannot be empty');
+      }
+
+      Query query = _firestore
+          .collection(FirebaseConstants.messagesCollection)
+          .where(FirebaseConstants.messageRoomIdField, isEqualTo: roomId)
+          .orderBy(FirebaseConstants.messageTimestampField, descending: true);
+
+      // Apply pagination
+      if (lastMessageId != null) {
+        final lastMessageDoc = await _firestore
+            .collection(FirebaseConstants.messagesCollection)
+            .doc(lastMessageId)
+            .get();
+
+        if (lastMessageDoc.exists) {
+          query = query.startAfterDocument(lastMessageDoc);
+        }
+      }
+
+      if (limit != null && limit > 0) {
+        query = query.limit(limit);
+      }
+
+      final querySnapshot = await query.get();
+      final messages = querySnapshot.docs
+          .map((doc) => MessageModel.fromFirestore(doc))
+          .toList();
+
+      // Reverse to get chronological order (oldest first)
+      return messages.reversed.toList();
+    } on ValidationFailure {
+      rethrow;
+    } on FirebaseException catch (e) {
+      throw ServerFailure('Failed to get paginated messages: ${e.message}');
+    } catch (e) {
+      throw ServerFailure('Unexpected error getting paginated messages: $e');
     }
   }
 

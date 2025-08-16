@@ -35,4 +35,21 @@ class AppStrings {
   static const String tryAgain = 'Try Again';
   static const String cancel = 'Cancel';
   static const String ok = 'OK';
+  static const String retry = 'Retry';
+  static const String offline = 'Offline';
+  static const String noConnection = 'No Connection';
+
+  // Error Messages
+  static const String networkError =
+      'Network error. Please check your connection.';
+  static const String serverError = 'Server error. Please try again later.';
+  static const String unexpectedError = 'An unexpected error occurred.';
+  static const String offlineMessage =
+      'You are currently offline. Some features may not be available.';
+
+  // Success Messages
+  static const String operationSuccessful = 'Operation completed successfully';
+  static const String messagesSent = 'Message sent successfully';
+  static const String roomCreated = 'Chat room created successfully';
+  static const String roomJoined = 'Joined chat room successfully';
 }

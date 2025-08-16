@@ -1,0 +1,124 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    function isValidUser(userData) {
+      return userData.keys().hasAll(['email', 'displayName', 'createdAt', 'lastSeen', 'isOnline']) &&
+             userData.email is string &&
+             userData.displayName is string &&
+             userData.createdAt is timestamp &&
+             userData.lastSeen is timestamp &&
+             userData.isOnline is bool;
+    }
+    
+    function isValidMessage(messageData) {
+      return messageData.keys().hasAll(['roomId', 'senderId', 'content', 'type', 'timestamp', 'status']) &&
+             messageData.roomId is string &&
+             messageData.senderId is string &&
+             messageData.content is string &&
+             messageData.type in ['text', 'image', 'file'] &&
+             messageData.timestamp is timestamp &&
+             messageData.status in ['sent', 'delivered', 'read'] &&
+             messageData.senderId == request.auth.uid;
+    }
+    
+    function isValidChatRoom(roomData) {
+      return roomData.keys().hasAll(['name', 'description', 'createdBy', 'createdAt', 'participants']) &&
+             roomData.name is string &&
+             roomData.description is string &&
+             roomData.createdBy is string &&
+             roomData.createdAt is timestamp &&
+             roomData.participants is list &&
+             roomData.createdBy == request.auth.uid;
+    }
+    
+    function isRoomParticipant(roomId) {
+      return request.auth.uid in get(/databases/$(database)/documents/chatRooms/$(roomId)).data.participants;
+    }
+
+    // Users collection rules
+    match /users/{userId} {
+      // Users can read their own profile and profiles of users in their chat rooms
+      allow read: if isAuthenticated() && (
+        isOwner(userId) || 
+        exists(/databases/$(database)/documents/chatRooms/{roomId}) where 
+          request.auth.uid in get(/databases/$(database)/documents/chatRooms/{roomId}).data.participants &&
+          userId in get(/databases/$(database)/documents/chatRooms/{roomId}).data.participants
+      );
+      
+      // Users can only create and update their own profile
+      allow create: if isAuthenticated() && 
+                   isOwner(userId) && 
+                   isValidUser(request.resource.data);
+      
+      allow update: if isAuthenticated() && 
+                   isOwner(userId) && 
+                   isValidUser(request.resource.data);
+      
+      // Users cannot delete their profile
+      allow delete: if false;
+    }
+
+    // Chat rooms collection rules
+    match /chatRooms/{roomId} {
+      // Anyone authenticated can read room info to join
+      allow read: if isAuthenticated();
+      
+      // Only authenticated users can create rooms
+      allow create: if isAuthenticated() && 
+                   isValidChatRoom(request.resource.data);
+      
+      // Only room creator or participants can update room (for joining)
+      allow update: if isAuthenticated() && (
+        resource.data.createdBy == request.auth.uid ||
+        request.auth.uid in resource.data.participants
+      );
+      
+      // Only room creator can delete room
+      allow delete: if isAuthenticated() && 
+                   resource.data.createdBy == request.auth.uid;
+    }
+
+    // Messages collection rules
+    match /messages/{messageId} {
+      // Only room participants can read messages
+      allow read: if isAuthenticated() && 
+                 isRoomParticipant(resource.data.roomId);
+      
+      // Only authenticated users can create messages in rooms they're part of
+      allow create: if isAuthenticated() && 
+                   isValidMessage(request.resource.data) &&
+                   isRoomParticipant(request.resource.data.roomId);
+      
+      // Only message sender can update message (for status updates)
+      // Or room participants can update read status
+      allow update: if isAuthenticated() && (
+        resource.data.senderId == request.auth.uid ||
+        (isRoomParticipant(resource.data.roomId) && 
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readBy', 'status']))
+      );
+      
+      // Only message sender can delete their messages
+      allow delete: if isAuthenticated() && 
+                   resource.data.senderId == request.auth.uid;
+    }
+
+    // Rate limiting: Prevent spam by limiting message creation
+    match /messages/{messageId} {
+      allow create: if isAuthenticated() && 
+                   isValidMessage(request.resource.data) &&
+                   isRoomParticipant(request.resource.data.roomId) &&
+                   // Limit to 10 messages per minute per user
+                   request.time > resource.data.timestamp + duration.value(6, 's');
+    }
+  }
+}

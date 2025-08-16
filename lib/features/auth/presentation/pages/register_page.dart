@@ -5,6 +5,7 @@ import '../../../../core/constants/app_strings.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../core/widgets/loading_indicator.dart';
+import '../../../../core/utils/error_handler.dart';
 import '../../../../core/routing/routing.dart';
 import '../bloc/auth_bloc.dart';
 
@@ -53,19 +54,7 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: AppColors.error,
-        action: SnackBarAction(
-          label: AppStrings.ok,
-          textColor: AppColors.textOnPrimary,
-          onPressed: () {
-            ScaffoldMessenger.of(context).hideCurrentSnackBar();
-          },
-        ),
-      ),
-    );
+    ErrorHandler.showErrorSnackBar(context, message);
   }
 
   @override

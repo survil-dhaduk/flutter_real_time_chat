@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
-import '../../../../core/constants/app_strings.dart';
+
 import '../../../../core/widgets/loading_indicator.dart';
+import '../../../../core/widgets/error_widgets.dart';
+import '../../../../core/utils/error_handler.dart';
+
 import '../../../../core/routing/routing.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 
@@ -93,18 +96,16 @@ class _ChatRoomsListPageState extends State<ChatRoomsListPage> {
             BlocListener<ChatBloc, ChatState>(
               listener: (context, state) {
                 if (state is ChatError) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(state.message),
-                      backgroundColor: AppColors.error,
-                    ),
+                  ErrorHandler.showErrorSnackBar(
+                    context,
+                    state.message,
+                    onRetry: () => _chatBloc.add(const LoadChatRooms()),
+                    showRetry: state.operation == 'load_chat_rooms',
                   );
                 } else if (state is ChatRoomCreated) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Chat room created successfully!'),
-                      backgroundColor: AppColors.success,
-                    ),
+                  ErrorHandler.showSuccessSnackBar(
+                    context,
+                    'Chat room created successfully!',
                   );
                 }
               },
@@ -132,7 +133,10 @@ class _ChatRoomsListPageState extends State<ChatRoomsListPage> {
 
   Widget _buildBody(BuildContext context, ChatState state) {
     if (state is ChatLoading && state.operation == 'Loading chat rooms') {
-      return const Center(child: LoadingIndicator());
+      return ListView.builder(
+        itemCount: 6,
+        itemBuilder: (context, index) => const ChatRoomSkeletonLoader(),
+      );
     }
 
     if (state is ChatError && state.previousState == null) {
@@ -199,39 +203,9 @@ class _ChatRoomsListPageState extends State<ChatRoomsListPage> {
   }
 
   Widget _buildErrorState(BuildContext context, ChatError state) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.error_outline,
-            size: 64,
-            color: AppColors.error,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            AppStrings.error,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: AppColors.error,
-                ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            state.message,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton(
-            onPressed: () {
-              _chatBloc.add(const LoadChatRooms());
-            },
-            child: const Text(AppStrings.tryAgain),
-          ),
-        ],
-      ),
+    return ErrorDisplay(
+      message: state.message,
+      onRetry: () => _chatBloc.add(const LoadChatRooms()),
     );
   }
 

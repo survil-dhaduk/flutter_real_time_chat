@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = "com.survildhaduk.flutter_realtime_chat.flutter_real_time_chat"
+    namespace = "com.realtimechat.flutter_app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -21,21 +21,47 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.survildhaduk.flutter_realtime_chat.flutter_real_time_chat"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdkVersion flutter.minSdkVersion  // Required for Firebase
+        applicationId = "com.realtimechat.flutter_app"
+        minSdkVersion 21  // Required for Firebase and modern Android features
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        
+        // App metadata
+        resValue "string", "app_name", "Real-Time Chat"
+        resValue "string", "app_description", "Modern Flutter messaging app with real-time features"
+    }
+
+    signingConfigs {
+        release {
+            // For production, you should use proper keystore
+            // This is using debug keys for demo purposes
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+            storeFile file('debug.keystore')
+            storePassword 'android'
+        }
     }
 
     buildTypes {
+        debug {
+            applicationIdSuffix ".debug"
+            debuggable true
+            minifyEnabled false
+            shrinkResources false
+        }
+        
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.debug
+            signingConfig signingConfigs.release
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            
+            // Optimize for release
+            debuggable false
+            jniDebuggable false
+            renderscriptDebuggable false
+            zipAlignEnabled true
         }
     }
 }

@@ -6,32 +6,41 @@ import 'package:dartz/dartz.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../../core/utils/logger.dart';
 import '../../../../core/services/user_context_service.dart';
+import '../../../../core/services/cache_service.dart';
+import '../../../../core/services/pagination_service.dart';
+import '../../../../core/services/memory_management_service.dart';
 import '../../domain/entities/chat_room.dart';
 import '../../domain/entities/message.dart';
 import '../../domain/repositories/chat_repository.dart';
 import '../datasources/chat_remote_data_source.dart';
 import '../models/chat_room_model.dart';
-import '../models/message_model.dart';
 
 /// Implementation of [ChatRepository] that handles chat operations
-/// with proper error mapping, real-time data handling, and offline support
+/// with proper error mapping, real-time data handling, caching, and offline support
 class ChatRepositoryImpl implements ChatRepository {
   final ChatRemoteDataSource _remoteDataSource;
   final UserContextService _userContextService;
+  final CacheService _cacheService;
+  final PaginationService _paginationService;
+  final MemoryManagementService _memoryManagementService;
   final Logger _logger;
 
-  // Cache for offline support
-  List<ChatRoomModel>? _cachedChatRooms;
-  final Map<String, List<MessageModel>> _cachedMessages = {};
+  // Stream controllers for real-time updates
   final Map<String, StreamController<List<Message>>> _messageStreamControllers =
       {};
 
   ChatRepositoryImpl({
     required ChatRemoteDataSource remoteDataSource,
     required UserContextService userContextService,
+    required CacheService cacheService,
+    required PaginationService paginationService,
+    required MemoryManagementService memoryManagementService,
     Logger? logger,
   })  : _remoteDataSource = remoteDataSource,
         _userContextService = userContextService,
+        _cacheService = cacheService,
+        _paginationService = paginationService,
+        _memoryManagementService = memoryManagementService,
         _logger = logger ?? const Logger();
 
   @override
@@ -39,14 +48,30 @@ class ChatRepositoryImpl implements ChatRepository {
     try {
       _logger.info('ChatRepository: Getting chat rooms');
 
-      final chatRooms = await _remoteDataSource.getChatRooms();
+      // Try to get from remote first
+      try {
+        final chatRooms = await _remoteDataSource.getChatRooms();
 
-      // Cache chat rooms for offline support
-      _cachedChatRooms = chatRooms;
-      _logger.info(
-          'ChatRepository: Successfully retrieved ${chatRooms.length} chat rooms');
+        // Cache chat rooms for offline support
+        await _cacheService.cacheChatRooms(chatRooms);
+        _logger.info(
+            'ChatRepository: Successfully retrieved and cached ${chatRooms.length} chat rooms');
 
-      return Right(chatRooms);
+        return Right(chatRooms);
+      } on SocketException catch (e) {
+        _logger.warning(
+            'ChatRepository: Network error, trying cache: ${e.message}');
+
+        // Try to get from cache
+        final cachedRooms = await _cacheService.getCachedChatRooms();
+        if (cachedRooms != null) {
+          _logger.info(
+              'ChatRepository: Returning ${cachedRooms.length} cached chat rooms');
+          return Right(cachedRooms);
+        }
+
+        return const Left(NetworkFailure.general());
+      }
     } on ValidationFailure catch (e) {
       _logger.error(
           'ChatRepository: Validation error getting chat rooms: ${e.message}');
@@ -55,26 +80,15 @@ class ChatRepositoryImpl implements ChatRepository {
       _logger.error(
           'ChatRepository: Server error getting chat rooms: ${e.message}');
 
-      // Return cached data if available during server errors
-      if (_cachedChatRooms != null) {
+      // Try to get from cache
+      final cachedRooms = await _cacheService.getCachedChatRooms();
+      if (cachedRooms != null) {
         _logger.info(
             'ChatRepository: Returning cached chat rooms due to server error');
-        return Right(_cachedChatRooms!);
+        return Right(cachedRooms);
       }
 
       return Left(e);
-    } on SocketException catch (e) {
-      _logger.error(
-          'ChatRepository: Network error getting chat rooms: ${e.message}');
-
-      // Return cached data if available during network issues
-      if (_cachedChatRooms != null) {
-        _logger.info(
-            'ChatRepository: Returning cached chat rooms due to network error');
-        return Right(_cachedChatRooms!);
-      }
-
-      return const Left(NetworkFailure.general());
     } catch (e) {
       _logger.error('ChatRepository: Unexpected error getting chat rooms: $e');
       return Left(ServerFailure('Failed to get chat rooms: ${e.toString()}'));
@@ -86,9 +100,11 @@ class ChatRepositoryImpl implements ChatRepository {
     try {
       _logger.info('ChatRepository: Creating chat rooms stream');
 
-      return _remoteDataSource.getChatRoomsStream().map((chatRooms) {
+      const listenerId = 'chat_rooms_stream';
+
+      final stream = _remoteDataSource.getChatRoomsStream().map((chatRooms) {
         // Cache chat rooms for offline support
-        _cachedChatRooms = chatRooms;
+        _cacheService.cacheChatRooms(chatRooms);
         _logger.info(
             'ChatRepository: Chat rooms stream updated with ${chatRooms.length} rooms');
         return chatRooms.cast<ChatRoom>();
@@ -97,11 +113,31 @@ class ChatRepositoryImpl implements ChatRepository {
         // Re-throw the error to let the caller handle it
         throw error;
       });
+
+      // Register the stream subscription for memory management
+      final subscription = stream.listen((_) {});
+      _memoryManagementService.registerListener(
+        listenerId,
+        subscription,
+        description: 'Chat rooms real-time stream',
+      );
+
+      return stream;
     } catch (e) {
       _logger.error('ChatRepository: Error creating chat rooms stream: $e');
 
-      // Return a stream that emits cached data if available, otherwise empty list
-      return Stream.value(_cachedChatRooms?.cast<ChatRoom>() ?? <ChatRoom>[]);
+      // Return a stream that emits cached data if available
+      return _getCachedChatRoomsStream();
+    }
+  }
+
+  /// Get cached chat rooms as a stream
+  Stream<List<ChatRoom>> _getCachedChatRoomsStream() async* {
+    final cachedRooms = await _cacheService.getCachedChatRooms();
+    if (cachedRooms != null) {
+      yield cachedRooms.cast<ChatRoom>();
+    } else {
+      yield <ChatRoom>[];
     }
   }
 
@@ -131,10 +167,11 @@ class ChatRepositoryImpl implements ChatRepository {
         createdBy: currentUserId,
       );
 
-      // Update cached chat rooms
-      if (_cachedChatRooms != null) {
-        _cachedChatRooms!.insert(0, chatRoom);
-      }
+      // Update cache with new room
+      final cachedRooms =
+          await _cacheService.getCachedChatRooms() ?? <ChatRoomModel>[];
+      cachedRooms.insert(0, chatRoom);
+      await _cacheService.cacheChatRooms(cachedRooms);
 
       _logger.info(
           'ChatRepository: Successfully created chat room: ${chatRoom.id}');
@@ -233,12 +270,17 @@ class ChatRepositoryImpl implements ChatRepository {
       );
 
       // Remove from cached chat rooms if present
-      if (_cachedChatRooms != null) {
-        _cachedChatRooms!.removeWhere((room) => room.id == roomId);
+      final cachedRooms = await _cacheService.getCachedChatRooms();
+      if (cachedRooms != null) {
+        cachedRooms.removeWhere((room) => room.id == roomId);
+        await _cacheService.cacheChatRooms(cachedRooms);
       }
 
       // Clear cached messages for this room
-      _cachedMessages.remove(roomId);
+      await _cacheService.removeCachedMessages(roomId);
+
+      // Remove pagination state
+      _paginationService.removePagination(roomId);
 
       // Close message stream controller for this room
       _messageStreamControllers[roomId]?.close();
@@ -271,29 +313,51 @@ class ChatRepositoryImpl implements ChatRepository {
     String? lastMessageId,
   }) async {
     try {
-      _logger.info('ChatRepository: Getting messages for room: $roomId');
+      _logger.info(
+          'ChatRepository: Getting messages for room: $roomId with pagination');
 
       // Validate input
       if (roomId.trim().isEmpty) {
         return const Left(ValidationFailure.emptyField('Room ID'));
       }
 
-      // For now, we'll use the stream-based approach since the data source provides streams
-      // In a real implementation, you might want to add pagination support to the data source
-      final messages = await _remoteDataSource.getMessages(roomId).first;
-
-      // Apply limit if specified
-      List<MessageModel> limitedMessages = messages;
-      if (limit != null && limit > 0) {
-        limitedMessages = messages.take(limit).toList();
+      // Initialize pagination if not already done
+      if (_paginationService.getPaginationState(roomId) == null) {
+        _paginationService.initializePagination(roomId, pageSize: limit ?? 20);
       }
 
-      // Cache messages for offline support
-      _cachedMessages[roomId] = limitedMessages;
-      _logger.info(
-          'ChatRepository: Successfully retrieved ${limitedMessages.length} messages');
+      // Try to get from remote with pagination
+      try {
+        final messages = await _remoteDataSource.getMessagesPaginated(
+          roomId: roomId,
+          limit: limit,
+          lastMessageId: lastMessageId,
+        );
 
-      return Right(limitedMessages);
+        // Update pagination state
+        _paginationService.updatePaginationState(roomId, messages);
+
+        // Cache messages for offline support
+        await _cacheService.cacheMessages(roomId, messages);
+
+        _logger.info(
+            'ChatRepository: Successfully retrieved ${messages.length} messages with pagination');
+
+        return Right(messages);
+      } on SocketException catch (e) {
+        _logger.warning(
+            'ChatRepository: Network error, trying cache: ${e.message}');
+
+        // Try to get from cache
+        final cachedMessages = await _cacheService.getCachedMessages(roomId);
+        if (cachedMessages != null) {
+          _logger.info(
+              'ChatRepository: Returning ${cachedMessages.length} cached messages');
+          return Right(cachedMessages);
+        }
+
+        return const Left(NetworkFailure.general());
+      }
     } on ValidationFailure catch (e) {
       _logger.error(
           'ChatRepository: Validation error getting messages: ${e.message}');
@@ -303,25 +367,14 @@ class ChatRepositoryImpl implements ChatRepository {
           .error('ChatRepository: Server error getting messages: ${e.message}');
 
       // Return cached messages if available during server errors
-      if (_cachedMessages.containsKey(roomId)) {
+      final cachedMessages = await _cacheService.getCachedMessages(roomId);
+      if (cachedMessages != null) {
         _logger.info(
             'ChatRepository: Returning cached messages due to server error');
-        return Right(_cachedMessages[roomId]!);
+        return Right(cachedMessages);
       }
 
       return Left(e);
-    } on SocketException catch (e) {
-      _logger.error(
-          'ChatRepository: Network error getting messages: ${e.message}');
-
-      // Return cached messages if available during network issues
-      if (_cachedMessages.containsKey(roomId)) {
-        _logger.info(
-            'ChatRepository: Returning cached messages due to network error');
-        return Right(_cachedMessages[roomId]!);
-      }
-
-      return const Left(NetworkFailure.general());
     } catch (e) {
       _logger.error('ChatRepository: Unexpected error getting messages: $e');
       return Left(ServerFailure('Failed to get messages: ${e.toString()}'));
@@ -336,23 +389,49 @@ class ChatRepositoryImpl implements ChatRepository {
       _logger
           .info('ChatRepository: Creating messages stream for room: $roomId');
 
-      return _remoteDataSource.getMessages(roomId).map((messages) {
+      final listenerId = 'messages_stream_$roomId';
+
+      final stream = _remoteDataSource.getMessages(roomId).map((messages) {
         // Cache messages for offline support
-        _cachedMessages[roomId] = messages;
+        _cacheService.cacheMessages(roomId, messages);
+
+        // Optimize message list to prevent memory issues
+        final optimizedMessages =
+            _paginationService.optimizeMessageList(messages);
+
         _logger.info(
-            'ChatRepository: Messages stream updated with ${messages.length} messages');
-        return messages.cast<Message>();
+            'ChatRepository: Messages stream updated with ${optimizedMessages.length} messages');
+        return optimizedMessages.cast<Message>();
       }).handleError((error) {
         _logger.error('ChatRepository: Error in messages stream: $error');
         // Re-throw the error to let the caller handle it
         throw error;
       });
+
+      // Register the stream subscription for memory management
+      final subscription = stream.listen((_) {});
+      _memoryManagementService.registerListener(
+        listenerId,
+        subscription,
+        description: 'Messages real-time stream for room $roomId',
+      );
+
+      return stream;
     } catch (e) {
       _logger.error('ChatRepository: Error creating messages stream: $e');
 
-      // Return a stream that emits cached messages if available, otherwise empty list
-      return Stream.value(
-          _cachedMessages[roomId]?.cast<Message>() ?? <Message>[]);
+      // Return a stream that emits cached messages if available
+      return _getCachedMessagesStream(roomId);
+    }
+  }
+
+  /// Get cached messages as a stream
+  Stream<List<Message>> _getCachedMessagesStream(String roomId) async* {
+    final cachedMessages = await _cacheService.getCachedMessages(roomId);
+    if (cachedMessages != null) {
+      yield cachedMessages.cast<Message>();
+    } else {
+      yield <Message>[];
     }
   }
 
@@ -384,10 +463,8 @@ class ChatRepositoryImpl implements ChatRepository {
         messageType: _messageTypeToString(type),
       );
 
-      // Add to cached messages
-      if (_cachedMessages.containsKey(roomId)) {
-        _cachedMessages[roomId]!.add(message);
-      }
+      // Cache the new message
+      await _cacheService.cacheMessage(roomId, message);
 
       _logger.info('ChatRepository: Successfully sent message: ${message.id}');
       return Right(message);
@@ -437,13 +514,15 @@ class ChatRepositoryImpl implements ChatRepository {
       );
 
       // Update cached message status
-      if (_cachedMessages.containsKey(roomId)) {
+      final cachedMessages = await _cacheService.getCachedMessages(roomId);
+      if (cachedMessages != null) {
         final messageIndex =
-            _cachedMessages[roomId]!.indexWhere((msg) => msg.id == messageId);
+            cachedMessages.indexWhere((msg) => msg.id == messageId);
         if (messageIndex != -1) {
-          final updatedMessage = _cachedMessages[roomId]![messageIndex]
+          final updatedMessage = cachedMessages[messageIndex]
               .markAsReadBy(currentUserId, DateTime.now());
-          _cachedMessages[roomId]![messageIndex] = updatedMessage;
+          cachedMessages[messageIndex] = updatedMessage;
+          await _cacheService.cacheMessages(roomId, cachedMessages);
         }
       }
 
@@ -721,14 +800,15 @@ class ChatRepositoryImpl implements ChatRepository {
       }
 
       // First check cached rooms
-      if (_cachedChatRooms != null) {
-        final cachedRoom = _cachedChatRooms!.firstWhere(
-          (room) => room.id == roomId,
-          orElse: () => throw StateError('Room not found'),
-        );
-        if (cachedRoom.id == roomId) {
+      final cachedRooms = await _cacheService.getCachedChatRooms();
+      if (cachedRooms != null) {
+        try {
+          final cachedRoom =
+              cachedRooms.firstWhere((room) => room.id == roomId);
           _logger.info('ChatRepository: Found room in cache: $roomId');
           return Right(cachedRoom);
+        } catch (e) {
+          // Room not found in cache, continue to remote fetch
         }
       }
 
@@ -860,11 +940,18 @@ class ChatRepositoryImpl implements ChatRepository {
 
   /// Disposes resources and closes stream controllers
   void dispose() {
+    // Close stream controllers
     for (final controller in _messageStreamControllers.values) {
       controller.close();
     }
     _messageStreamControllers.clear();
-    _cachedChatRooms = null;
-    _cachedMessages.clear();
+
+    // Clean up memory management
+    _memoryManagementService.dispose();
+
+    // Clear pagination states
+    _paginationService.clearAll();
+
+    _logger.info('ChatRepository: Disposed successfully');
   }
 }

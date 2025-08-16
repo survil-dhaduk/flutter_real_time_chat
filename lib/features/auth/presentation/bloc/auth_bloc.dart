@@ -10,12 +10,14 @@ import '../../domain/usecases/sign_out.dart';
 import '../../domain/usecases/get_current_user.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../../../core/errors/failures.dart';
+import '../../../../core/mixins/error_handling_mixin.dart';
 
 part 'auth_event.dart';
 part 'auth_state.dart';
 
 /// BLoC for managing authentication state and events
-class AuthBloc extends Bloc<AuthEvent, AuthState> {
+class AuthBloc extends Bloc<AuthEvent, AuthState>
+    with ErrorHandlingMixin<AuthEvent, AuthState> {
   final SignInUseCase _signInUseCase;
   final SignUpUseCase _signUpUseCase;
   final SignOutUseCase _signOutUseCase;
@@ -70,17 +72,25 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(const AuthLoading());
 
-    final result = await _signInUseCase(
-      SignInParams(
-        email: event.email,
-        password: event.password,
-      ),
-    );
+    try {
+      final result = await executeWithErrorHandling(
+        () => _signInUseCase(
+          SignInParams(
+            email: event.email,
+            password: event.password,
+          ),
+        ),
+        operationName: 'sign_in',
+        enableRetry: false, // Don't retry auth operations automatically
+      );
 
-    result.fold(
-      (failure) => emit(AuthError(message: _mapFailureToMessage(failure))),
-      (user) => emit(AuthAuthenticated(user: user)),
-    );
+      result.fold(
+        (failure) => emit(AuthError(message: _mapFailureToMessage(failure))),
+        (user) => emit(AuthAuthenticated(user: user)),
+      );
+    } catch (error, stackTrace) {
+      handleError(error, stackTrace, operation: 'sign_in');
+    }
   }
 
   /// Handles sign up requests
@@ -90,18 +100,26 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(const AuthLoading());
 
-    final result = await _signUpUseCase(
-      SignUpParams(
-        email: event.email,
-        password: event.password,
-        displayName: event.displayName,
-      ),
-    );
+    try {
+      final result = await executeWithErrorHandling(
+        () => _signUpUseCase(
+          SignUpParams(
+            email: event.email,
+            password: event.password,
+            displayName: event.displayName,
+          ),
+        ),
+        operationName: 'sign_up',
+        enableRetry: false, // Don't retry auth operations automatically
+      );
 
-    result.fold(
-      (failure) => emit(AuthError(message: _mapFailureToMessage(failure))),
-      (user) => emit(AuthAuthenticated(user: user)),
-    );
+      result.fold(
+        (failure) => emit(AuthError(message: _mapFailureToMessage(failure))),
+        (user) => emit(AuthAuthenticated(user: user)),
+      );
+    } catch (error, stackTrace) {
+      handleError(error, stackTrace, operation: 'sign_up');
+    }
   }
 
   /// Handles sign out requests
@@ -111,12 +129,20 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(const AuthLoading());
 
-    final result = await _signOutUseCase();
+    try {
+      final result = await executeWithErrorHandling(
+        () => _signOutUseCase(),
+        operationName: 'sign_out',
+        enableRetry: false, // Don't retry auth operations automatically
+      );
 
-    result.fold(
-      (failure) => emit(AuthError(message: _mapFailureToMessage(failure))),
-      (_) => emit(const AuthUnauthenticated()),
-    );
+      result.fold(
+        (failure) => emit(AuthError(message: _mapFailureToMessage(failure))),
+        (_) => emit(const AuthUnauthenticated()),
+      );
+    } catch (error, stackTrace) {
+      handleError(error, stackTrace, operation: 'sign_out');
+    }
   }
 
   /// Handles checking current authentication status
@@ -154,6 +180,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       default:
         return 'An unexpected error occurred. Please try again.';
     }
+  }
+
+  @override
+  void emitErrorState(
+    Failure failure, {
+    String? operation,
+    AuthState? previousState,
+  }) {
+    emit(AuthError(message: _mapFailureToMessage(failure)));
   }
 
   @override
