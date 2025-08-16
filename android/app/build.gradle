@@ -7,22 +7,22 @@ plugins {
 }
 
 android {
-    namespace = "com.realtimechat.flutter_app"
+    namespace = "com.survildhaduk.flutter_realtime_chat.flutter_real_time_chat"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_1_8
+        jvmTarget = JavaVersion.VERSION_17
     }
 
     defaultConfig {
-        applicationId = "com.realtimechat.flutter_app"
-        minSdkVersion 21  // Required for Firebase and modern Android features
+        applicationId = "com.survildhaduk.flutter_realtime_chat.flutter_real_time_chat"
+        minSdkVersion flutter.minSdkVersion  // Required for Firebase and modern Android features
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -45,7 +45,6 @@ android {
 
     buildTypes {
         debug {
-            applicationIdSuffix ".debug"
             debuggable true
             minifyEnabled false
             shrinkResources false
